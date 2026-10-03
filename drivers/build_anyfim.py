@@ -71,88 +71,19 @@ def _patch_kernel(upto_stage):
     open(kp, "w", encoding="utf-8", newline="\n").write("\n".join(lines))
 
 
-# 补丁3：事务集精简后把幸存项 ID 重映射到稠密区间 [0, S-1]（按频率降序名次分配），
-# 位图内存与缓存局部性随幸存项数 S 缩放而非原始 itemIDmax；输出时映射回原始 ID，
-# 因此结果文件的项编号与未打补丁时完全一致（集合一致性可复验）。
-_DENSE_REMAP_FN = r'''
-static void denseRemapItems() {//patched-by-drivers 精简后项ID稠密重映射
-    const int finalThreshold = freqPerItem_inSort[UptoStage];
-    std::vector<int> old2new(freqPerItem.size(), -1);
-    dense2orig.clear();
-    for (int rank = 0; rank < (int)items_inFreqSort.size(); rank++) {
-        int orig = items_inFreqSort[rank];
-        if (orig >= 0 && orig < (int)freqPerItem.size() && freqPerItem[orig] >= finalThreshold) {
-            old2new[orig] = (int)dense2orig.size();
-            dense2orig.push_back(orig);
-        }
-    }
-    const int S = (int)dense2orig.size();
-    for (auto& row : h_transSet)
-        for (auto& x : row) x = old2new[x];
-    std::vector<int> freqDense(S, 0);
-    for (int n = 0; n < S; n++) freqDense[n] = freqPerItem[dense2orig[n]];
-    freqPerItem = freqDense;
-    items_inFreqSort.resize(S);
-    freqPerItem_inSort.resize(S);
-    for (int n = 0; n < S; n++) { items_inFreqSort[n] = n; freqPerItem_inSort[n] = freqDense[n]; }
-    itemIDmax = S - 1;
-    itemIDmin = 0;
-    std::cout << "denseRemapItems: " << S << " items remapped to [0," << S - 1 << "]" << std::endl;
-}
-'''
+def _patch_disable_dense():
+    """消融用反向补丁：注释掉引擎原生的 denseRemapItems() 调用（仅 nodense 构建）。"""
+    kp = os.path.join(SRC_DIR, KERNEL_REL)
+    s = open(kp, encoding="utf-8").read()
+    old = "    reduceTransSet(freqPerItem_inSort[UptoStage]);\n    denseRemapItems();"
+    new = "    reduceTransSet(freqPerItem_inSort[UptoStage]);\n    //denseRemapItems();//patched-by-drivers 消融：禁用稠密重映射"
+    assert s.count(old) == 1, f"反向补丁锚点出现 {s.count(old)} 次"
+    open(kp, "w", encoding="utf-8", newline="\n").write(s.replace(old, new, 1))
 
 
 def _replace_once(s, old, new, tag):
     assert s.count(old) == 1, f"补丁锚点 [{tag}] 出现 {s.count(old)} 次（期望 1）: {old[:60]!r}"
     return s.replace(old, new, 1)
-
-
-def _patch_dense_remap():
-    """补丁3：稠密重映射（函数定义 + 调用点 + 位图循环 + 两处输出回映）。"""
-    kp = os.path.join(SRC_DIR, KERNEL_REL)
-    s = open(kp, encoding="utf-8").read()
-    # 3.1 全局变量声明
-    s = _replace_once(
-        s,
-        "std::vector<int> freqPerItem_inSort;",
-        "std::vector<int> freqPerItem_inSort;\nstatic std::vector<int> dense2orig;   //patched-by-drivers",
-        "globals",
-    )
-    # 3.2 函数定义（插在 create_d_transSet 之前）
-    s = _replace_once(
-        s,
-        "static void create_d_transSet(int max_transLengthReduced, int transNumReduced)",
-        _DENSE_REMAP_FN + "\nstatic void create_d_transSet(int max_transLengthReduced, int transNumReduced)",
-        "fn-def",
-    )
-    # 3.3 调用点：reduceTransSet 之后立即重映射（同处 preprocessing 计时区内）
-    s = _replace_once(
-        s,
-        "    reduceTransSet(freqPerItem_inSort[UptoStage]);",
-        "    reduceTransSet(freqPerItem_inSort[UptoStage]);\n    denseRemapItems();//patched-by-drivers",
-        "call-site",
-    )
-    # 3.4 位图幸存项循环：稠密ID从0开始，必须包含0（原循环 1.. 会漏掉稠密0号=最高频项）
-    s = _replace_once(
-        s,
-        "    for (int i = 1; i <= itemIDmax; i++) {\n        if (freqPerItem[i] >= finalThreshold) freqItems.push_back(i);",
-        "    for (int i = 0; i <= itemIDmax; i++) {//patched-by-drivers 稠密ID从0起\n        if (freqPerItem[i] >= finalThreshold) freqItems.push_back(i);",
-        "bitmap-loop",
-    )
-    # 3.5/3.6 两处输出回映原始ID
-    s = _replace_once(
-        s,
-        "            std::cout << MFIsPool[UptoDimensionStep][i].itemsSet[j] << \" \";",
-        "            std::cout << (dense2orig.empty() ? MFIsPool[UptoDimensionStep][i].itemsSet[j] : dense2orig[MFIsPool[UptoDimensionStep][i].itemsSet[j]]) << \" \";//patched-by-drivers",
-        "console-out",
-    )
-    s = _replace_once(
-        s,
-        "                outfile << MFIsPool[Step][i].itemsSet[j] << \" \";",
-        "                outfile << (dense2orig.empty() ? MFIsPool[Step][i].itemsSet[j] : dense2orig[MFIsPool[Step][i].itemsSet[j]]) << \" \";//patched-by-drivers",
-        "file-out",
-    )
-    open(kp, "w", encoding="utf-8", newline="\n").write(s)
 
 
 def ensure_anyfim_built(dataset_path, upto_stage, rebuild=False, dense=True):
@@ -169,7 +100,11 @@ def ensure_anyfim_built(dataset_path, upto_stage, rebuild=False, dense=True):
         _copy_sources()
         _patch_kernel(upto_stage)
         if dense:
-            _patch_dense_remap()
+            # 稠密重映射已固化进引擎源码，无需补丁；校验存在性即可
+            src = open(os.path.join(SRC_DIR, KERNEL_REL), encoding="utf-8").read()
+            assert "void denseRemapItems()" in src, "引擎源码缺少原生 denseRemapItems"
+        else:
+            _patch_disable_dense()  # 消融：禁用稠密重映射
         env = dict(os.environ, CudaToolkitDir=CUDA_DIR)
         cmd = [
             MSBUILD, os.path.join(SRC_DIR, "AnytimeMining.sln"),

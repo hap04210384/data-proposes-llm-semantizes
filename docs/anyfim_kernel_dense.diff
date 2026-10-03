@@ -1,0 +1,78 @@
+--- kernel.cu (pristine)
++++ kernel.cu (dense-remap)
+@@ -61,6 +61,7 @@
+ 
+ std::vector<int> freqPerItem;
+ std::vector<int> freqPerItem_inSort;
++static std::vector<int> dense2orig;   // 稠密ID->原始ID（精简重映射后输出回映）
+ std::vector<int> items_inFreqSort;
+ 
+ std::vector<FI> FIsStack;
+@@ -345,7 +346,7 @@
+     // 幸存项判定与 reduceTransSet 的保留条件严格一致：freqPerItem[i] >= 精减阈值
+     int finalThreshold = freqPerItem_inSort[UptoStage];
+     freqItems.clear();
+-    for (int i = 1; i <= itemIDmax; i++) {
++    for (int i = 0; i <= itemIDmax; i++) {
+         if (freqPerItem[i] >= finalThreshold) freqItems.push_back(i);
+     }
+     freqItemsNum = (int)freqItems.size();
+@@ -553,7 +554,7 @@
+     for (int i = 0; i < MFIsPool[UptoDimensionStep].size(); i++) {
+         std::cout << i + 1 << "th: " << MFIsPool[UptoDimensionStep][i].itemsSet.size() << " { ";
+         for (int j = 0; j < MFIsPool[UptoDimensionStep][i].itemsSet.size(); j++) {
+-            std::cout << MFIsPool[UptoDimensionStep][i].itemsSet[j] << " ";
++            std::cout << (dense2orig.empty() ? MFIsPool[UptoDimensionStep][i].itemsSet[j] : dense2orig[MFIsPool[UptoDimensionStep][i].itemsSet[j]]) << " ";
+         }
+         std::cout << "}   support:" << double(MFIsPool[UptoDimensionStep][i].frequency) / transNum << "  frequency: " << MFIsPool[UptoDimensionStep][i].frequency << std::endl;
+     }
+@@ -639,7 +640,7 @@
+         for (int i = 0; i < MFIsPool[Step].size(); i++) {
+             outfile << i + 1 << "th: " << MFIsPool[Step][i].itemsSet.size() << " { ";
+             for (int j = 0; j < MFIsPool[Step][i].itemsSet.size(); j++) {
+-                outfile << MFIsPool[Step][i].itemsSet[j] << " ";
++                outfile << (dense2orig.empty() ? MFIsPool[Step][i].itemsSet[j] : dense2orig[MFIsPool[Step][i].itemsSet[j]]) << " ";
+             }
+             outfile << "}   support: " << double(MFIsPool[Step][i].frequency) / transNum << "  frequency: " << MFIsPool[Step][i].frequency << std::endl;
+         }
+@@ -659,6 +660,32 @@
+         else ++row;
+     }
+     //for (const auto& r : h_transSet) { for (int val : r) std::cout << val << ' '; std::cout << std::endl; }// 输出结果
++}
++
++
++static void denseRemapItems() {//精简后项ID稠密重映射：幸存项按频率名次映射到[0,S-1]
++    const int finalThreshold = freqPerItem_inSort[UptoStage];
++    std::vector<int> old2new(freqPerItem.size(), -1);
++    dense2orig.clear();
++    for (int rank = 0; rank < (int)items_inFreqSort.size(); rank++) {
++        int orig = items_inFreqSort[rank];
++        if (orig >= 0 && orig < (int)freqPerItem.size() && freqPerItem[orig] >= finalThreshold) {
++            old2new[orig] = (int)dense2orig.size();
++            dense2orig.push_back(orig);
++        }
++    }
++    const int S = (int)dense2orig.size();
++    for (auto& row : h_transSet)
++        for (auto& x : row) x = old2new[x];
++    std::vector<int> freqDense(S, 0);
++    for (int n = 0; n < S; n++) freqDense[n] = freqPerItem[dense2orig[n]];
++    freqPerItem = freqDense;
++    items_inFreqSort.resize(S);
++    freqPerItem_inSort.resize(S);
++    for (int n = 0; n < S; n++) { items_inFreqSort[n] = n; freqPerItem_inSort[n] = freqDense[n]; }
++    itemIDmax = S - 1;
++    itemIDmin = 0;
++    std::cout << "denseRemapItems: " << S << " items remapped to [0," << S - 1 << "]" << std::endl;
+ }
+ 
+ static void create_d_transSet(int max_transLengthReduced, int transNumReduced)
+@@ -804,6 +831,7 @@
+     clock_t tic, toc;
+     tic = clock();
+     reduceTransSet(freqPerItem_inSort[UptoStage]);
++    denseRemapItems();
+     toc = clock();
+     preprocessing_time = (double)(toc - tic) / CLOCKS_PER_SEC;
+     transNumReduced = h_transSet.size();
