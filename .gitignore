@@ -1,0 +1,25 @@
+# 数据与结果（大文件、可再生成，一律不入库）
+data/
+results/
+*.csv
+*.log
+*.zip
+*.dat
+*.txt
+!requirements*.txt
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# 引擎目录（引擎是独立仓库，不入本库）
+engines/
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 编辑器
+.vscode/
+.idea/
