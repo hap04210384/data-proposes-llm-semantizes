@@ -92,9 +92,18 @@ def ensure_anyfim_built(dataset_path, upto_stage, rebuild=False, dense=True):
     dense=True 打稠密重映射补丁（默认）；dense=False 用于消融对照。
     """
     tag = "dense" if dense else "nodense"
-    stamp = os.path.join(BUILD_DIR, f"built_for_stage{int(upto_stage)}_{tag}.stamp")
     exe = os.path.join(SRC_DIR, "x64", "Release", "AnytimeMining.exe")
-    if rebuild or not os.path.exists(stamp) or not os.path.exists(exe):
+    # 单一 exe 路径被不同 (stage, tag) 构建共享覆盖，必须以"上次实际构建参数"为准判断，
+    # 不能只看按参数命名的 stamp（stamp 不会随覆盖失效，曾导致零售 50 轮二进制跑 chess 20 轮）。
+    import json
+    marker_p = os.path.join(BUILD_DIR, "last_build.json")
+    try:
+        last = json.load(open(marker_p, encoding="utf-8"))
+    except Exception:
+        last = {}
+    need = (rebuild or not os.path.exists(exe)
+            or last.get("stage") != int(upto_stage) or last.get("tag") != tag)
+    if need:
         if not os.path.isdir(ENGINE_SRC):
             raise FileNotFoundError(f"引擎源码不存在：{ENGINE_SRC}（请先下载 AnyFIM 到 engines/）")
         _copy_sources()
@@ -117,7 +126,8 @@ def ensure_anyfim_built(dataset_path, upto_stage, rebuild=False, dense=True):
             print(r.stdout[-3000:])
             print(r.stderr[-2000:], file=sys.stderr)
             raise RuntimeError("AnytimeMining 构建失败")
-        open(stamp, "w").write(str(upto_stage))
+        json.dump({"stage": int(upto_stage), "tag": tag},
+                  open(marker_p, "w", encoding="utf-8"))
     # 每次调用都刷新数据集文件（内容可能变化）
     shutil.copyfile(dataset_path, os.path.join(TXN_DIR, "data.txt"))
     return exe
