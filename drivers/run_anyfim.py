@@ -21,9 +21,9 @@ from build_anyfim import ensure_anyfim_built, TXN_DIR, ROOT  # noqa: E402,F401
 from parse_mfi import parse_anyfim_anytime  # noqa: E402
 
 
-def run_anyfim(dataset_path, upto_stage):
-    """返回 (rows, results_path)；rows 为逐轮 dict 列表。"""
-    exe = ensure_anyfim_built(dataset_path, upto_stage)
+def run_anyfim(dataset_path, upto_stage, dense=True):
+    """返回 (rows, results_path)；rows 为逐轮 dict 列表。dense=False 为消融对照。"""
+    exe = ensure_anyfim_built(dataset_path, upto_stage, dense=dense)
     exe_dir = os.path.dirname(exe)
     # 引擎把结果写到数据文件同目录；数据路径是相对 cwd 的 ..\\TransactionSets\\data.txt
     stage_dir = os.path.abspath(os.path.join(exe_dir, "..", "TransactionSets"))
