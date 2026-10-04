@@ -1,14 +1,18 @@
 # -*- coding: utf-8 -*-
-"""实验 1 同阈值对照：anytime 第 k 轮 vs 基线在 θ_k 的单次挖掘。
+"""Experiment 1 same-threshold comparison: anytime stage k vs a single baseline mine at theta_k.
 
-对 anytime 流的每一轮 k：
-  1. 用其轮阈值 θ_k = freq_k / transNum（微偏 ε 规避引擎浮点边界）跑基线引擎一次；
-  2. 校验集合一致性（Jaccard；差异应仅限"支持度恰等于阈值"的并列项）；
-  3. 记录两侧耗时 —— 这是"同等质量"前提下的公平成本对照。
+For every stage k of the anytime stream:
+  1. run the baseline engine once at the stage threshold theta_k = freq_k / transNum
+     (nudged by epsilon to avoid the engine's floating-point boundary);
+  2. check set agreement (Jaccard; any difference should be limited to items whose
+     support equals the threshold exactly, i.e. tie-breaking);
+  3. record both sides' runtimes -- the fair cost comparison under the "equal
+     quality" premise.
 
-用法:
-    python exp1/run_matched_pairs.py <数据集名如chess> [最大轮数K]
-产出:
+Usage:
+    python exp1/run_matched_pairs.py <dataset name, e.g. chess> [max stages K]
+
+Output:
     results/exp1/pairs_<name>_K<K>.csv
 """
 import csv
@@ -26,7 +30,7 @@ from run_anyfim import run_anyfim  # noqa: E402
 
 BASELINE_EXE = os.path.join(os.path.dirname(ROOT), "engines", "TensorFIM", "code",
                             "engine", "run", "CoParaCG_baseline.exe")
-EPS = 1e-9  # 避开 3196*θ 浮点回绕；不影响整数频数截断
+EPS = 1e-9  # avoid floating-point wraparound at 3196*theta; does not affect integer frequency truncation
 
 
 def main():
@@ -36,9 +40,9 @@ def main():
     any_csv = os.path.join(RES, f"anyfim_{name}_stages{K}.csv")
 
     if not os.path.exists(any_csv):
-        run_anyfim(ds, K)  # 引擎产物在 build/ 下，CSV 随后重读
+        run_anyfim(ds, K)  # engine artifacts land in build/; the CSV is re-read below
 
-    # anytime 结果（重新跑以确保与 build 目录一致，或直接用已有）
+    # anytime results (re-run to stay consistent with the build directory, or reuse existing)
     import glob as g
     any_res = sorted(g.glob(os.path.join(ROOT, "build", "anyfim", "src", "x64",
                                          "TransactionSets", "data.txt-*-stages=Results.txt")))[-1]
@@ -50,9 +54,9 @@ def main():
         if ln.startswith("transNum:"):
             trans_num = int(ln.split(":")[1])
             break
-    assert trans_num, "结果文件中未找到 transNum"
+    assert trans_num, "transNum not found in result file"
 
-    # 预热基线引擎（丢弃）
+    # baseline engine warmup (discarded)
     subprocess.run([BASELINE_EXE, ds, "0.99"], capture_output=True, timeout=1800)
 
     rows, cum_any = [], 0.0

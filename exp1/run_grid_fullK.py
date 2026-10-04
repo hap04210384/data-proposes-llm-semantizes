@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
-"""实验 1 补测：网格基线在全部 K 个供给阈值上逐个全量重跑（与 anytime 等量交付对照）。
+"""Experiment 1 addendum: grid baseline re-run in full at every one of the K supply
+thresholds (equal-deliverables comparison against anytime).
 
-背景：dual_caliber 只跑了去重后的 12/9 个阈值，手稿 Fig.2 与 III-B 的
-10.8x / 6.6x 用的是"单档墙钟中位 x K"线性模型。本脚本按 anytime 实际交付的
-全部 K 个阈值（含重复档）逐一实测网格成本，5 次重复取中位，彻底锚定手稿数字。
+Background: dual_caliber covered only the 12/9 deduplicated thresholds, and the
+manuscript's Fig. 2 / Section III-B figures used a linear "per-threshold wall
+median x K" model. This script measures the grid cost at all K thresholds actually
+delivered by anytime (duplicates included), medians of 5 repetitions, anchoring
+every manuscript number in measurement.
 
-产出 results/exp1/fullK_grid_<name>.csv:
+Output: results/exp1/fullK_grid_<name>.csv:
     rep, run_idx, threshold, wall_s, engine_s, cum_wall_s, cum_engine_s
 """
 import csv
@@ -59,7 +62,7 @@ def main():
     K = len(ths)
     ds = os.path.abspath(os.path.join(RES, f"{name}.txt"))
 
-    one_run(ds, ths[0])  # 预热（不计入）
+    one_run(ds, ths[0])  # warmup (not counted)
 
     out = os.path.join(RES, f"fullK_grid_{name}.csv")
     recs = []
@@ -80,7 +83,7 @@ def main():
                      "cum_wall_s", "cum_engine_s"])
         wr.writerows(recs)
 
-    # 汇总：各 run_idx 的墙钟/引擎中位，累计后与 anytime 中位对比
+    # summary: per-run_idx wall/engine medians, cumulated and compared against anytime medians
     med_wall, med_engine = [], []
     for i in range(1, K + 1):
         ws = [r[3] for r in recs if r[1] == i]

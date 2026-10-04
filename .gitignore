@@ -1,4 +1,4 @@
-# 数据与结果（大文件、可再生成，一律不入库）
+# Data and results (large files, regenerable — never committed)
 results/
 *.csv
 *.log
@@ -7,7 +7,8 @@ results/
 *.txt
 !requirements*.txt
 
-# 审稿人复现数据（data/ 下四个数据集放行，TCGA 因单文件限 100MB 以 .gz 分发）
+# Reviewer reproduction data (the four datasets under data/ are tracked;
+# TCGA ships as .gz because of GitHub's 100 MB single-file limit)
 !data/
 !data/*.txt
 !data/*.gz
@@ -17,14 +18,14 @@ __pycache__/
 *.pyc
 .venv/
 
-# 引擎目录（引擎是独立仓库，不入本库）
+# Engine directories (engines live in their own repositories, not here)
 engines/
 
-# 系统
+# OS
 .DS_Store
 Thumbs.db
 
-# 编辑器
+# Editors
 .vscode/
 .idea/
 # build/

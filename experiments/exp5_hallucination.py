@@ -1,15 +1,19 @@
 # -*- coding: utf-8 -*-
-"""Exp5 幻觉对照实验（论文 Exp.5）。
+"""Exp 5 hallucination-control study (paper Exp. 5).
 
-对照设计（retail 数据集，N=50 条规则/项集，temperature=0，3 次重复取中位）：
-  A 组（幻觉基线）：DeepSeek 凭空 author 规则并自报 support/confidence。
-     指标：项存在率、support 绝对偏差、confidence 绝对偏差、完全编造率。
-  B 组（本系统）：引擎供给 top-50 MFI -> 派生规则（引擎 support + 我们从
-     原始事务独立复算的 confidence）-> DeepSeek 仅语义化。
-     指标：引擎 support 与我们复算值的 parity、语义化输出是否出现任何
-     数字改写（必须为 0 才符合构造性保证）。
+Controlled design (retail dataset, N=50 rules/itemsets, temperature=0, medians of
+3 repetitions):
+  Group A (hallucination baseline): DeepSeek authors rules from scratch and self-reports
+     support/confidence. Metrics: item-existence rate, support absolute error,
+     confidence absolute error, full-fabrication rate.
+  Group B (this system): engine supplies the top-50 MFIs -> rules derived (engine
+     support + confidence recomputed independently by us from the raw transactions)
+     -> DeepSeek only semantizes. Metrics: parity between engine support and our
+     recomputation; whether the semantized output rewrites any number (must be 0
+     for the architectural guarantee to hold).
 
-复现性：prompt 全文、模型返回的 model 字段、时间戳全部落盘 results/exp5/。
+Reproducibility: full prompt text, the model field returned by the API, and
+timestamps are all persisted under results/exp5/.
 """
 import json
 import os
@@ -39,7 +43,7 @@ def load_transactions(path):
 
 
 def load_mfis(path):
-    """解析引擎结果文件中的 MFI 行: 'kth: n { i j k }  support: s  frequency: f'"""
+    """Parse MFI lines from an engine result file: 'kth: n { i j k }  support: s  frequency: f'"""
     mfis = []
     pat = re.compile(r"^\d+th:\s+\d+\s+\{\s*([\d\s]+?)\s*\}\s+support:\s+([\d.]+)\s+frequency:\s+(\d+)")
     with open(path, encoding="utf-8", errors="ignore") as f:
@@ -54,7 +58,7 @@ def load_mfis(path):
 
 
 def exact_stats(tx, items):
-    """从事务集独立复算 support 与 confidence（规则 = items[:-1] -> items[-1]）。"""
+    """Recompute support and confidence independently from the transaction set (rule = items[:-1] -> items[-1])."""
     n = len(tx)
     ante = set(items[:-1])
     full = set(items)
@@ -66,7 +70,7 @@ def exact_stats(tx, items):
 
 
 def parse_json_array(text):
-    """从 LLM 输出中提取第一个 JSON 数组（容忍 markdown 代码围栏）。"""
+    """Extract the first JSON array from LLM output (markdown code fences tolerated)."""
     m = re.search(r"\[.*\]", text, re.S)
     if not m:
         return None
@@ -77,7 +81,7 @@ def parse_json_array(text):
 
 
 def run_group_a(vocab, n_rules, reps):
-    """A 组：LLM 凭空 author 规则。domain 不给数据访问，只描述任务背景。"""
+    """Group A: the LLM authors rules from scratch; the domain prompt describes the task only, with no data access."""
     raw_path = os.path.join(OUT, "group_a_raw.json")
     raws = []
     if os.path.exists(raw_path):
@@ -112,7 +116,7 @@ def run_group_a(vocab, n_rules, reps):
             rep["item_exist_rate"].append(sum(exist) / max(1, len(exist)))
             if len(exist) == sum(exist):
                 rep["n_all_items_exist"] += 1
-            # 只要存在不存在的项，真实 support/confidence 即为 0，偏差=LLM 自报值
+            # any nonexistent item makes the true support/confidence 0, so the error equals the LLM's self-reported value
             if sum(exist) == len(exist) and len(items) >= 2:
                 sup_true, conf_true, _ = exact_stats(tx_global, tuple(sorted(set(int(i) for i in items))))
             else:
@@ -124,7 +128,7 @@ def run_group_a(vocab, n_rules, reps):
 
 
 def run_group_b(tx, mfis, n_rules, reps):
-    """B 组：引擎供给 + 独立复算 + LLM 仅语义化。"""
+    """Group B: engine supply + independent recomputation + LLM semantization only."""
     vocab_rules = [m for m in mfis if len(m["items"]) >= 2][:n_rules]
     n = len(tx)
     rules_text_rows = []
@@ -153,7 +157,7 @@ def run_group_b(tx, mfis, n_rules, reps):
     for r in raws[:reps]:
         parsed = parse_json_array(r["content"])
         n_named = len(parsed) if isinstance(parsed, list) else 0
-        # 数字保真检查：语义化输出中不得出现 support/confidence 字段或改写数字
+        # numeric-fidelity check: the semantized output must not add support/confidence fields or rewrite numbers
         num_violations = 0
         if isinstance(parsed, list):
             for p in parsed:
@@ -173,15 +177,15 @@ def run_group_b(tx, mfis, n_rules, reps):
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    print("[1/3] 加载 retail 事务集与引擎 MFI ...")
+    print("[1/3] loading retail transactions and engine MFIs ...")
     tx_global = load_transactions(DATA)
     vocab = set().union(*tx_global)
     mfis = load_mfis(MFI_FILE)
-    print(f"      {len(tx_global)} 事务, {len(vocab)} 项, {len(mfis)} MFI (>=2 项: {sum(1 for m in mfis if len(m['items'])>=2)})")
+    print(f"      {len(tx_global)} tx, {len(vocab)} items, {len(mfis)} MFIs (size>=2: {sum(1 for m in mfis if len(m['items'])>=2)})")
 
-    print("[2/3] A 组: LLM 凭空 author (3 次) ...")
+    print("[2/3] Group A: LLM authors from scratch (3 runs) ...")
     group_a = run_group_a(vocab, N_RULES, REPS)
-    print("[3/3] B 组: 引擎供给 + 语义化 (3 次) ...")
+    print("[3/3] Group B: engine supply + semantization (3 runs) ...")
     group_b = run_group_b(tx_global, mfis, N_RULES, REPS)
 
     def med(xs):

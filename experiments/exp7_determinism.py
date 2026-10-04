@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Exp7 确定性与消融实验。
+"""Exp 7 determinism and ablation experiment.
 
-(a) 确定性：同输入连续 2 次运行 anytime 流（dense），结果集逐字节/逐集合比对；
-(b) 消融：dense ID 映射 on/off 各跑一次，比对逐轮规则集合（Jaccard）与引擎耗时。
-结果落盘 results/exp7/（不入 git）。
+(a) Determinism: run the anytime stream twice in a row on the same input (dense);
+    compare result sets byte-for-byte and set-wise.
+(b) Ablation: dense ID mapping on/off, one run each; compare per-stage rule sets
+    (Jaccard) and engine runtime.
+Results are written to results/exp7/ (not tracked by git).
 """
 import csv
 import hashlib
@@ -36,7 +38,7 @@ def jaccard(a, b):
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    print("[Exp7-a] 确定性：连续 2 次运行 retail K=50 (dense) ...")
+    print("[Exp7-a] determinism: 2 consecutive runs, retail K=50 (dense) ...")
     snaps = []
     for i in (1, 2):
         rows, res_path = run_anyfim(DATA, K, dense=True)
@@ -47,9 +49,9 @@ if __name__ == "__main__":
     same_hash = snaps[0]["sha256"] == snaps[1]["sha256"]
     stages = sorted(set(snaps[0]["sets"]) | set(snaps[1]["sets"]))
     min_j = min(jaccard(snaps[0]["sets"][str(k)], snaps[1]["sets"][str(k)]) for k in stages)
-    print(f"  字节一致: {same_hash}, 逐轮 Jaccard 最小值: {min_j:.6f}")
+    print(f"  byte-identical: {same_hash}, min per-stage Jaccard: {min_j:.6f}")
 
-    print("[Exp7-b] 消融：retail K=50 dense=False ...")
+    print("[Exp7-b] ablation: retail K=50 dense=False ...")
     rows_nd, res_nd = run_anyfim(DATA, K, dense=False)
     snap_nd = snapshot(rows_nd, res_nd, "nodense")
     dense_sets = snaps[0]["sets"]
@@ -58,8 +60,8 @@ if __name__ == "__main__":
     min_j_nd = min(jac.values())
     eng_dense = sum(snaps[0]["engine_s"])
     eng_nd = sum(snap_nd["engine_s"])
-    print(f"  dense 引擎总耗时 {eng_dense:.4f}s vs nodense {eng_nd:.4f}s "
-          f"(dense 加速 {eng_nd / eng_dense:.2f}x); 逐轮 Jaccard 最小值 {min_j_nd:.6f}")
+    print(f"  engine total dense {eng_dense:.4f}s vs nodense {eng_nd:.4f}s "
+          f"(dense speedup {eng_nd / eng_dense:.2f}x); min per-stage Jaccard {min_j_nd:.6f}")
 
     with open(os.path.join(OUT, "exp7_summary.json"), "w", encoding="utf-8") as f:
         json.dump({"determinism": {"byte_identical": same_hash, "min_stage_jaccard": min_j,

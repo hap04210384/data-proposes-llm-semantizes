@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
-"""驱动 AnyFIM anytime 引擎跑指定数据集的渐进激活流，输出逐轮 CSV。
+"""Run the AnyFIM anytime engine's progressive activation stream on a dataset and
+emit a per-stage CSV.
 
-用法:
-    python drivers/run_anyfim.py <数据集路径> <轮数> [输出CSV]
+Usage:
+    python drivers/run_anyfim.py <dataset path> <stage count> [output CSV]
 
-不改引擎源码：build_anyfim.ensure_anyfim_built 在 build/ 目录出补丁版二进制；
-运行时数据文件 staged 为 ..\\TransactionSets\\data.txt（引擎相对路径约定）。
+Engine sources are not modified: build_anyfim.ensure_anyfim_built produces the patched
+binary in build/; at run time the dataset is staged as ..\\TransactionSets\\data.txt
+(engine-relative path convention).
 """
 import csv
 import os
@@ -22,17 +24,18 @@ from parse_mfi import parse_anyfim_anytime  # noqa: E402
 
 
 def run_anyfim(dataset_path, upto_stage, dense=True):
-    """返回 (rows, results_path)；rows 为逐轮 dict 列表。dense=False 为消融对照。"""
+    """Return (rows, results_path); rows is a list of per-stage dicts. dense=False is the ablation control."""
     exe = ensure_anyfim_built(dataset_path, upto_stage, dense=dense)
     exe_dir = os.path.dirname(exe)
-    # 引擎把结果写到数据文件同目录；数据路径是相对 cwd 的 ..\\TransactionSets\\data.txt
+    # the engine writes results next to the data file; the data path is cwd-relative ..\TransactionSets\data.txt
     stage_dir = os.path.abspath(os.path.join(exe_dir, "..", "TransactionSets"))
     os.makedirs(stage_dir, exist_ok=True)
     shutil.copyfile(dataset_path, os.path.join(stage_dir, "data.txt"))
     shutil.copyfile(dataset_path, os.path.join(TXN_DIR, "data.txt"))
 
-    # CPU/GPU 标定缓存：按 (数据集md5, 轮数) 记住标定值，经环境变量 ANYFIM_GPU_PCT 注入，
-    # 跳过每次启动约 148s 的标定探测（标定是一次性硬件探测，不属于供给耗时）。
+    # CPU/GPU calibration cache: remember the calibrated value per (dataset md5, stage count)
+    # and inject it via the ANYFIM_GPU_PCT environment variable, skipping the ~148 s probe at
+    # every start (calibration is a one-time hardware probe, not part of the supply cost).
     import hashlib, json
     cache_p = os.path.join(ROOT, "results", "gpu_pct_cache.json")
     try:
@@ -48,7 +51,7 @@ def run_anyfim(dataset_path, upto_stage, dense=True):
     r = subprocess.run([exe], cwd=exe_dir, capture_output=True, timeout=3600, env=env)
     wall = time.perf_counter() - t0
 
-    # 引擎打印 "ANYFIM_GPU_PCT=<v>"（新标定）或 "GPUtaskPercentage (cached): <v>"（用缓存）
+    # the engine prints "ANYFIM_GPU_PCT=<v>" (fresh calibration) or "GPUtaskPercentage (cached): <v>"
     out = r.stdout.decode("gbk", "replace")
     m = re.search(r"ANYFIM_GPU_PCT=([\d.eE+-]+)", out)
     if m and key not in cache:
@@ -58,7 +61,7 @@ def run_anyfim(dataset_path, upto_stage, dense=True):
 
     results = os.path.join(stage_dir, f"data.txt-{int(upto_stage)}-stages=Results.txt")
     if not os.path.exists(results):
-        raise RuntimeError(f"引擎未产出结果文件：{results}\n" + out[-1500:])
+        raise RuntimeError(f"engine produced no result file: {results}\n" + out[-1500:])
     header, stages = parse_anyfim_anytime(results)
 
     runtimes = header.get("runtimePerStage(s)", [])

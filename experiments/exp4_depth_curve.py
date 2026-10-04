@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Exp4b 供给深度 vs 规则有趣度：各阶段 top-20 size>=2 MFI 的 lift 中位数。
+"""Exp 4b supply depth vs rule interestingness: median lift of the top-20 size>=2
+MFIs at sampled supply stages.
 
-假设：浅阶段（高阈值）的多项项集是高频项的偶然同现（lift≈1）；
-越深（阈值越低），幸存的多项项集 lift 越高——zero-threshold 供给把
-"罕见但强关联"的规则也交出来，这正是固定阈值方法容易错过的部分。
-数据集：TCGA-BRCA (K=3000) 与 retail (K=50) 对照。
+Hypothesis: shallow stages (high threshold) yield multi-item sets that are chance
+co-occurrences of frequent items (lift ~ 1); the deeper the stage (lower the
+threshold), the higher the lift of surviving multi-item sets -- zero-threshold
+supply also delivers the "rare but strongly associated" rules that a fixed-threshold
+method easily misses.
+
+Datasets: TCGA-BRCA (K=3000) vs retail (K=50).
 """
 import hashlib
 import json
@@ -74,9 +78,9 @@ def depth_curve(data_path, k, sample_every=100):
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    print("[Exp4b] TCGA-BRCA K=3000 深度曲线 ...")
+    print("[Exp4b] TCGA-BRCA K=3000 depth curve ...")
     tcga_curve = depth_curve(os.path.join(RES, "exp2", "tcga.txt"), 3000, sample_every=200)
-    print("[Exp4b] retail K=50 深度曲线 ...")
+    print("[Exp4b] retail K=50 depth curve ...")
     retail_curve = depth_curve(os.path.join(RES, "exp1", "retail.txt"), 50, sample_every=5)
     out = {"tcga_K3000": tcga_curve, "retail_K50": retail_curve}
     json.dump(out, open(os.path.join(OUT, "exp4_depth_curve.json"), "w", encoding="utf-8"), indent=1)

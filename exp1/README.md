@@ -1,45 +1,50 @@
-# Exp.1 — Cost of the supply stream vs threshold-grid baseline (chess / retail)
+# Exp.1 — Cost of the supply stream vs the threshold-grid baseline (chess / retail)
 
-复现手稿 Exp.1（Table I、Fig.2）的全部脚本。所有结果文件写入 `../results/exp1/`
-（该目录不入库，脚本可直接再生成）。
+Scripts reproducing manuscript Exp. 1 (Table I, Fig. 2). All result files are
+written to `../results/exp1/` (that directory is not tracked; the scripts
+regenerate it).
 
-## 运行顺序
+## Run order
 
-1. **anytime 流 5 次重复**（引擎累计时间 + 全程墙钟，逐阶段输出）：
+1. **Anytime stream, 5 repetitions** (cumulative engine time + total wall-clock,
+   per stage):
    ```
    python exp1/run_reps.py chess 20 5
    python exp1/run_reps.py retail 50 5
    ```
-   产出 `anyfim_{chess_K20,retail_K50}_rep{1..5}.csv` 与 `_median5.csv`。
+   Outputs `anyfim_{chess_K20,retail_K50}_rep{1..5}.csv` and `_median5.csv`.
 
-2. **全 K 网格实测**（手稿 Fig.2 / Table I 的网格侧；在全部 K 个供给阈值上
-   逐个全量重跑基线矿工，5 次重复取中位）：
+2. **Full-K measured grid** (the grid side of manuscript Fig. 2 / Table I; the
+   baseline miner is re-run in full at every one of the K supply thresholds,
+   medians of 5):
    ```
    python exp1/run_grid_fullK.py chess 5
    python exp1/run_grid_fullK.py retail 5
    ```
-   产出 `fullK_grid_{chess,retail}.csv`（逐档 wall/engine + 累计）。
-   加速比 = 网格各档墙钟中位之和 ÷ anytime 墙钟中位；
-   引擎比 = 网格各档引擎中位之和 ÷ anytime 引擎累计中位。
+   Outputs `fullK_grid_{chess,retail}.csv` (per-threshold wall/engine + cumulative).
+   Wall speedup = sum of per-threshold wall medians / anytime wall median;
+   engine ratio = sum of per-threshold engine medians / anytime cumulative engine median.
 
-3. **双口径对照（去重阈值子集）**，可选：
+3. **Dual-caliber comparison (deduplicated-threshold subset)**, optional:
    ```
    python exp1/run_dual_caliber.py chess 20 5
    python exp1/run_dual_caliber.py retail 50 5
    ```
-   产出 `dual_caliber_{chess,retail}.csv`（仅 12/9 个去重阈值，用于口径对照）。
+   Outputs `dual_caliber_{chess,retail}.csv` (12/9 deduplicated thresholds only;
+   a caliber cross-check).
 
-4. **逐阶段正确性（Jaccard 对齐）**：
+4. **Per-stage correctness (Jaccard alignment)**:
    ```
    python exp1/run_matched_pairs.py
    ```
-   产出 `pairs_{chess_K20,retail_K50}.csv`（各阶段与同学阈值基线的 Jaccard）。
+   Outputs `pairs_{chess_K20,retail_K50}.csv` (Jaccard of each stage against the
+   same-threshold baseline).
 
-## 手稿数字溯源（v0.3 起）
+## Manuscript number provenance (since v0.3)
 
-| 手稿数字 | 来源文件 |
+| Manuscript number | Source file |
 |---|---|
-| chess 墙钟 0.186 s / 11.5× | `anyfim_chess_K20_median5.csv` 末行 `wall_total_s`；`fullK_grid_chess.csv` 各档中位和 2.140 s |
-| retail 墙钟 0.928 s / 6.9× | `anyfim_retail_K50_median5.csv`；`fullK_grid_retail.csv` 各档中位和 6.363 s |
-| 引擎比 1.01× / 1.89× | `fullK_grid_*.csv` 各档 `engine_s` 中位和 ÷ anytime `cum_engine_s` |
-| Jaccard 18/20、49/50 | `pairs_*.csv` |
+| chess wall 0.186 s / 11.5x | last row `wall_total_s` of `anyfim_chess_K20_median5.csv`; `fullK_grid_chess.csv` per-threshold median sum 2.140 s |
+| retail wall 0.928 s / 6.9x | `anyfim_retail_K50_median5.csv`; `fullK_grid_retail.csv` per-threshold median sum 6.363 s |
+| engine ratio 1.01x / 1.89x | `fullK_grid_*.csv` per-threshold `engine_s` median sum / anytime `cum_engine_s` |
+| Jaccard 18/20, 49/50 | `pairs_*.csv` |

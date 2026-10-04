@@ -4,12 +4,12 @@
  
  std::vector<int> freqPerItem;
  std::vector<int> freqPerItem_inSort;
-+static std::vector<int> dense2orig;   // 稠密ID->原始ID（精简重映射后输出回映）
++static std::vector<int> dense2orig;   // dense ID -> original ID (map back at output after pruning remap)
  std::vector<int> items_inFreqSort;
  
  std::vector<FI> FIsStack;
 @@ -345,7 +346,7 @@
-     // 幸存项判定与 reduceTransSet 的保留条件严格一致：freqPerItem[i] >= 精减阈值
+     // survivor test, exactly consistent with reduceTransSet's keep condition: freqPerItem[i] >= pruning threshold
      int finalThreshold = freqPerItem_inSort[UptoStage];
      freqItems.clear();
 -    for (int i = 1; i <= itemIDmax; i++) {
@@ -38,11 +38,11 @@
 @@ -659,6 +660,32 @@
          else ++row;
      }
-     //for (const auto& r : h_transSet) { for (int val : r) std::cout << val << ' '; std::cout << std::endl; }// 输出结果
+     //for (const auto& r : h_transSet) { for (int val : r) std::cout << val << ' '; std::cout << std::endl; }// print results
 +}
 +
 +
-+static void denseRemapItems() {//精简后项ID稠密重映射：幸存项按频率名次映射到[0,S-1]
++static void denseRemapItems() {// dense-remap item IDs after pruning: survivors mapped by frequency rank to [0, S-1]
 +    const int finalThreshold = freqPerItem_inSort[UptoStage];
 +    std::vector<int> old2new(freqPerItem.size(), -1);
 +    dense2orig.clear();

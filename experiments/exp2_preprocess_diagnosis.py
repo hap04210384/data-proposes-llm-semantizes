@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
-"""Exp2 归因诊断：kosarak 预处理 135 s 到底花在哪——位图分配还是解析？
+"""Exp 2 attribution diagnosis: where does kosarak's 135 s preprocessing go --
+bitmap allocation or parsing?
 
-方法：构造 3 个变体，与全量对比（均 K=1，使引擎计算量可忽略，墙钟≈启动+预处理）：
-  full      990,002 事务, 41,270 项（位图 ≈ n_items*n_tx/8 = 5.16 GB）
-  quarter   前 250,000 事务（位图 1.29 GB，解析量 1/4）
-  tenth     前 100,000 事务（位图 0.52 GB，解析量 1/10）
-  vocab100k 全量事务但只保留前 10 万行出现过的项（位图 ∝ 截断词表 × 全量事务）
-GPU 标定常数（同机硬件常数 0.0788544）预先注入缓存，避免 148 s 标定污染计时。
+Method: build 3 dataset variants and compare them against the full set (all at K=1
+so engine computation is negligible and wall time ~= startup + preprocessing):
+  full      990,002 tx, 41,270 items (bitmap ~ n_items*n_tx/8 = 5.16 GB)
+  quarter   first 250,000 tx (bitmap 1.29 GB, parsing 1/4)
+  tenth     first 100,000 tx (bitmap 0.52 GB, parsing 1/10)
+  vocab100k full tx but keep only items seen in the first 100k rows
+            (bitmap ~ truncated vocab x full tx)
+
+The GPU calibration constant (hardware constant 0.0788544 on this machine) is
+injected into the cache up front so the 148 s calibration does not pollute timing.
 """
 import hashlib
 import json
@@ -35,7 +40,7 @@ def make_variants():
             with open(p, "w", encoding="utf-8") as f:
                 f.write("\n".join(lines[:n]) + "\n")
         variants[name] = p
-    # vocab100k：只保留前 10 万行出现过的项
+    # vocab100k: keep only items seen in the first 100k rows
     p = os.path.join(RES2, "kosarak_vocab100k.txt")
     if not os.path.exists(p):
         vocab = set()
@@ -69,7 +74,7 @@ if __name__ == "__main__":
     variants = make_variants()
     rows_out = {}
     for name, path in variants.items():
-        # 变体基础统计
+        # basic stats per variant
         n_tx = 0
         vocab = set()
         t_parse0 = time.perf_counter()

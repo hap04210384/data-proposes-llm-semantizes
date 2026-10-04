@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-"""实验 1 双口径对照：引擎时间口径 vs 墙钟口径，各 5 次重复取中位数。
+"""Experiment 1 dual-caliber comparison: engine time vs wall-clock, medians of 5 runs.
 
-anytime 侧直接用 run_reps 已保存的 rep CSV（含 cum_engine_s 与 wall_total_s）；
-网格侧重跑 5 次，除墙钟外解析每次结果文件头的 computation_time(s)。
+The anytime side reuses the rep CSVs saved by run_reps (cum_engine_s and wall_total_s);
+the grid side re-runs 5 times, parsing the computation_time(s) header line of each
+result file in addition to wall time.
 
-产出 results/exp1/dual_caliber_<ds>.csv:
-    any_cum_engine_s, any_wall_s, grid_cum_engine_s, grid_cum_wall_s,
-    speedup_engine (网格引擎累计/anytime引擎累计),
-    speedup_wall   (网格墙钟累计/anytime墙钟)
+Output: results/exp1/dual_caliber_<ds>.csv with
+    speedup_engine (grid engine total / anytime engine total),
+    speedup_wall   (grid wall total / anytime wall total)
 """
 import csv
 import glob
@@ -28,7 +28,7 @@ COMP = re.compile(r"^computation_time\(s\):\s*(\S+)", re.M)
 
 
 def grid_once_with_engine(ds_path, thr):
-    """跑一次网格档，返回 (wall_s, engine_s) 或 None。"""
+    """Run one grid threshold; return (wall_s, engine_s) or None."""
     out_file = f"{ds_path}-{thr:.6f}=Results.txt"
     if os.path.exists(out_file):
         os.remove(out_file)
@@ -50,7 +50,7 @@ def anytime_medians(name, K, N):
         rows = list(csv.DictReader(open(f, encoding="utf-8-sig")))
         cums.append(float(rows[-1]["cum_engine_s"]))
         walls.append(float(rows[-1]["wall_total_s"]))
-    assert len(cums) == N, f"rep 数 {len(cums)} != {N}"
+    assert len(cums) == N, f"rep count {len(cums)} != {N}"
     return statistics.median(cums), statistics.median(walls)
 
 
@@ -61,7 +61,7 @@ def main():
     any_eng, any_wall = anytime_medians(name, K, N)
 
     grid = GRIDS[name]
-    grid_once_with_engine(ds, grid[0])  # 预热
+    grid_once_with_engine(ds, grid[0])  # warmup
     walls, engis = [], []
     for i in range(N):
         w_rec, e_rec = [], []
@@ -96,7 +96,7 @@ def main():
         w = csv.DictWriter(f, fieldnames=list(row.keys()))
         w.writeheader()
         w.writerow(row)
-    print("\n== 双口径 ==")
+    print("\n== dual caliber ==")
     for k, v in row.items():
         print(f"  {k}: {v}")
     print("CSV:", out)

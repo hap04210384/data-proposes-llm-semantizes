@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
-"""DeepSeek-V3 语义化适配层（实验 5/6 用）。
+"""DeepSeek-V3 semantization adapter (used by Experiments 5 and 6).
 
-设计原则（论文复现底线，附录需披露）：
-- 模型全名与版本固定：deepseek-chat（对应 DeepSeek-V3 系列），调用时记录实际返回的 model 字段；
-- temperature=0（可复现），所有 prompt 原文随结果落盘；
-- API key 只经环境变量 DEEPSEEK_API_KEY 注入，不入库。
+Design principles (reproduction floor of the paper; to be disclosed in an appendix):
+- the model name and version are pinned: deepseek-chat (DeepSeek-V3 family); the model
+  field actually returned by the API is recorded with every call;
+- temperature = 0 (reproducible); the exact prompt text is persisted with every result;
+- the API key enters only via the DEEPSEEK_API_KEY environment variable, never the repo.
 
-用法:
+Usage:
     from drivers.llm_semantizer import semantize_rules, llm_author_rules
 """
 import json
@@ -18,7 +19,7 @@ BASE = "https://api.deepseek.com/chat/completions"
 MODEL = "deepseek-chat"
 TEMPERATURE = 0.0
 
-# 语义化：引擎供给的规则 -> LLM 只起名/打标签/消解冲突（永远不写数字）
+# semantization: engine-supplied rules -> the LLM only names/tags/conflict-resolves (never writes numbers)
 PROMPT_SEMANTIZE = """You are semantizing association rules mined from data.
 For each rule below, provide: (1) a short human-readable name; (2) domain tags;
 (3) a conflict note if it contradicts another rule in the list.
@@ -30,7 +31,7 @@ Rules (id: antecedent -> consequent; support; confidence):
 
 Return strict JSON: [{{"id": ..., "name": ..., "tags": [...], "conflict": ...}}, ...]"""
 
-# 幻觉对照基线：让 LLM 直接当规则作者（Exp 5 的"对手"）
+# hallucination-control baseline: let the LLM act as the rule author outright (the "opponent" in Exp. 5)
 PROMPT_AUTHOR = """You are a domain expert writing association rules for {domain}.
 Based on your knowledge, author {n} plausible association rules in the form
 "antecedent -> consequent", each with an estimated support (fraction of cases)
@@ -40,7 +41,7 @@ and confidence. Return strict JSON:
 
 def _chat(prompt, max_retries=4):
     key = os.environ.get("DEEPSEEK_API_KEY")
-    assert key, "缺少环境变量 DEEPSEEK_API_KEY"
+    assert key, "DEEPSEEK_API_KEY environment variable missing"
     body = json.dumps({"model": MODEL, "temperature": TEMPERATURE,
                        "messages": [{"role": "user", "content": prompt}]}).encode()
     for attempt in range(max_retries):
@@ -52,19 +53,19 @@ def _chat(prompt, max_retries=4):
             msg = out["choices"][0]["message"]["content"]
             return {"model": out.get("model", MODEL), "content": msg,
                     "prompt": prompt, "ts": time.strftime("%Y-%m-%d %H:%M:%S")}
-        except Exception as e:
+        except Exception:
             if attempt == max_retries - 1:
                 raise
             time.sleep(5 * (attempt + 1))
 
 
 def semantize_rules(rules_text):
-    """供给规则的语义化。rules_text 为 PROMPT_SEMANTIZE 的 {rules} 填充内容。"""
+    """Semantize supplied rules; rules_text fills the {rules} slot of PROMPT_SEMANTIZE."""
     return _chat(PROMPT_SEMANTIZE.format(rules=rules_text))
 
 
 def llm_author_rules(domain, n=20):
-    """幻觉对照基线：LLM 凭空 authored 规则（含其自己估计的支持度/置信度）。"""
+    """Hallucination-control baseline: the LLM authors rules from scratch (with its own estimated support/confidence)."""
     return _chat(PROMPT_AUTHOR.format(domain=domain, n=n))
 
 

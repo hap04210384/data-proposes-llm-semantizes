@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
-"""Exp4 TCGA-BRCA 规则质量实验（无金标准场景）。
+"""Exp 4 TCGA-BRCA rule-quality experiment (no gold standard available).
 
-指标 1 稳定性：80% bootstrap 子抽样 x 5，top-50 MFI 集合两两 Jaccard。
-指标 2 统计强度：全量 top-50 MFI 的 lift = P(XY)/(P(X)P(Y)) 分布，
-              lift >> 1 表示远超独立同现基线（数据驱动的质量证据）。
-指标 3 规模构成：top-50 中 size>=2 的项集占比（可作为规则派生的原料）。
-LLM 不入本实验：项为匿名基因 ID，无语义映射表，避免编造基因名（复现底线）。
+Metric 1, stability: 5x 80% bootstrap subsamples; pairwise Jaccard of the top-50
+MFI sets.
+Metric 2, statistical strength: lift = P(XY)/(P(X)P(Y)) distribution of the full-set
+top-50 MFIs; lift >> 1 means far above the independent-co-occurrence baseline
+(data-driven quality evidence).
+Metric 3, size composition: fraction of size>=2 sets in the top-50 (raw material
+for rule derivation).
+
+No LLM in this experiment: items are anonymous gene IDs with no semantic mapping
+table, so inventing gene names is a reproducibility risk we avoid by construction.
 """
 import hashlib
 import itertools
@@ -38,7 +43,7 @@ def seed_cache(path, k):
 
 
 def top_mfis(results_path, top=TOP):
-    """最终阶段按频数排序取 top 个 size>=2 的 MFI（规则原料；单独特集另计）。"""
+    """Top size>=2 MFIs of the final stage by frequency (rule raw material; singletons counted separately)."""
     _, stages = parse_anyfim_anytime(results_path)
     final = stages[max(stages)]
     ranked = sorted(final["mfis"].items(), key=lambda kv: -kv[1])
@@ -73,7 +78,7 @@ if __name__ == "__main__":
 
     sets = {}
     stats = {}
-    print("[Exp4] 全量 + 5 个 80% bootstrap 子抽样, K=3000 ...")
+    print("[Exp4] full + 5x 80% bootstrap subsamples, K=3000 ...")
     paths = {"full": DATA}
     for i in range(5):
         idx = sorted(rng.sample(range(len(lines)), int(0.8 * len(lines))))
@@ -93,7 +98,7 @@ if __name__ == "__main__":
     jacs = [jaccard(sets[a], sets[b]) for a, b in pairs]
     jacs_full = [jaccard(sets["full"], sets[b]) for b in sets if b != "full"]
 
-    # lift：全量 top-50 中 size>=2 项集
+    # lift: size>=2 sets in the full-set top-50
     tx, freq1 = exact_freqs(DATA)
     n = len(tx)
     lifts, sizes = [], []

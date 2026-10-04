@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
-"""AnyFIM anytime 引擎的"临时构建目录 + 补丁"驱动。
+"""Build driver for the AnyFIM anytime engine ("temporary build directory + patch" approach).
 
-原则：不动 engines/AnyFIM 原码。把 AnytimeMining 工程拷到本库 build/ 目录，
-只改副本里 kernel.cu 的数据路径行（该路径在源仓中硬编码），用 MSBuild 出二进制。
+Principle: the engines/AnyFIM sources are never modified. The AnytimeMining project is
+copied into this repository's build/ directory, only the hard-coded dataset path line in
+the kernel.cu copy is changed, and the binary is produced with MSBuild.
 
-用法：
+Usage:
     from drivers.build_anyfim import ensure_anyfim_built
     exe = ensure_anyfim_built(dataset_path, upto_stage)
-    # exe 位于 build/anyfim/src/x64/Release/AnytimeMining.exe
-    # 运行时 cwd 必须为 exe 所在目录（数据路径是相对 ..\\TransactionSets\\data.txt）
+    # exe lives at build/anyfim/src/x64/Release/AnytimeMining.exe
+    # at run time the cwd must be the exe's directory (the dataset path is
+    # relative: ..\\TransactionSets\\data.txt)
 """
 import os
 import re
@@ -17,7 +19,7 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(HERE)                                    # 仓库根
+ROOT = os.path.dirname(HERE)                                    # repository root
 WORKSPACE = os.path.dirname(ROOT)                               # kimi_work/
 ENGINE_SRC = os.path.join(WORKSPACE, "engines", "AnyFIM", "code", "AnyFIM-Anytime")
 BUILD_DIR = os.path.join(ROOT, "build", "anyfim")
@@ -31,7 +33,7 @@ PATCH_TAG = "//patched-by-drivers"
 
 
 def _copy_sources():
-    """引擎源码 -> 构建目录（已存在则增量同步，删除多余文件）。"""
+    """Copy engine sources -> build directory (full sync; extra files removed)."""
     if os.path.exists(SRC_DIR):
         shutil.rmtree(SRC_DIR)
     ignore = shutil.ignore_patterns("x64", ".vs", "TransactionSets")
@@ -40,9 +42,11 @@ def _copy_sources():
 
 
 def _patch_kernel(upto_stage):
-    """补丁1：数据路径参数化；补丁2：CPU/GPU 标定经 ANYFIM_GPU_PCT 环境变量缓存。
+    """Patch 1: parameterize the dataset path; patch 2: cache the CPU/GPU calibration
+    in the ANYFIM_GPU_PCT environment variable.
 
-    标定是每次进程启动约 148s 的一次性硬件探测，不属于供给耗时；引擎原码不动。
+    Calibration is a one-time hardware probe (about 148 s per process start) and is
+    not part of the supply cost; engine sources stay untouched.
     """
     kp = os.path.join(SRC_DIR, KERNEL_REL)
     s = open(kp, encoding="utf-8").read()
@@ -50,7 +54,7 @@ def _patch_kernel(upto_stage):
     n_patch = n_cal = 0
     for i, ln in enumerate(lines):
         if re.match(r"^CString transSetFile = _T\(", ln):
-            # 行内是 4 个字面反斜杠的 Windows 相对路径（与源仓保持一致）
+            # the line carries a Windows relative path with 4 literal backslashes (as in the source repo)
             lines[i] = (
                 'CString transSetFile = _T("..\\\\\\\\TransactionSets\\\\\\\\data.txt"); '
                 f"int UptoStage = {int(upto_stage)};{PATCH_TAG}"
@@ -66,35 +70,39 @@ def _patch_kernel(upto_stage):
                 + PATCH_TAG
             )
             n_cal += 1
-    assert n_patch == 1, f"kernel.cu 中应恰有 1 行激活的数据路径行，实际 {n_patch}"
-    assert n_cal == 1, f"kernel.cu 中应恰有 1 处 GPUtaskPercentage 标定调用，实际 {n_cal}"
+    assert n_patch == 1, f"expected exactly 1 active dataset-path line in kernel.cu, got {n_patch}"
+    assert n_cal == 1, f"expected exactly 1 GPUtaskPercentage calibration call in kernel.cu, got {n_cal}"
     open(kp, "w", encoding="utf-8", newline="\n").write("\n".join(lines))
 
 
 def _patch_disable_dense():
-    """消融用反向补丁：注释掉引擎原生的 denseRemapItems() 调用（仅 nodense 构建）。"""
+    """Reverse patch for the ablation: comment out the engine-native denseRemapItems() call (nodense builds only)."""
     kp = os.path.join(SRC_DIR, KERNEL_REL)
     s = open(kp, encoding="utf-8").read()
     old = "    reduceTransSet(freqPerItem_inSort[UptoStage]);\n    denseRemapItems();"
-    new = "    reduceTransSet(freqPerItem_inSort[UptoStage]);\n    //denseRemapItems();//patched-by-drivers 消融：禁用稠密重映射"
-    assert s.count(old) == 1, f"反向补丁锚点出现 {s.count(old)} 次"
+    new = "    reduceTransSet(freqPerItem_inSort[UptoStage]);\n    //denseRemapItems();//patched-by-drivers ablation: dense remapping disabled"
+    assert s.count(old) == 1, f"reverse-patch anchor occurs {s.count(old)} times"
     open(kp, "w", encoding="utf-8", newline="\n").write(s.replace(old, new, 1))
 
 
 def _replace_once(s, old, new, tag):
-    assert s.count(old) == 1, f"补丁锚点 [{tag}] 出现 {s.count(old)} 次（期望 1）: {old[:60]!r}"
+    assert s.count(old) == 1, f"patch anchor [{tag}] occurs {s.count(old)} times (expected 1): {old[:60]!r}"
     return s.replace(old, new, 1)
 
 
 def ensure_anyfim_built(dataset_path, upto_stage, rebuild=False, dense=True):
-    """确保（必要时构建）指定数据集/轮数的 AnytimeMining.exe，返回 exe 路径。
+    """Make sure an AnytimeMining.exe for the given dataset/stage count is built (building if
+    necessary) and return its path.
 
-    dense=True 打稠密重映射补丁（默认）；dense=False 用于消融对照。
+    dense=True keeps the engine-native dense remapping (default); dense=False builds the
+    ablation control.
     """
     tag = "dense" if dense else "nodense"
     exe = os.path.join(SRC_DIR, "x64", "Release", "AnytimeMining.exe")
-    # 单一 exe 路径被不同 (stage, tag) 构建共享覆盖，必须以"上次实际构建参数"为准判断，
-    # 不能只看按参数命名的 stamp（stamp 不会随覆盖失效，曾导致零售 50 轮二进制跑 chess 20 轮）。
+    # a single exe path is shared and overwritten by builds with different (stage, tag),
+    # so rebuild decisions must key on the *last actual build* parameters, not on a
+    # parameter-named stamp (stamps do not invalidate on overwrite; a retail-50 binary
+    # once ran a chess-20 experiment because of this).
     import json
     marker_p = os.path.join(BUILD_DIR, "last_build.json")
     try:
@@ -105,15 +113,15 @@ def ensure_anyfim_built(dataset_path, upto_stage, rebuild=False, dense=True):
             or last.get("stage") != int(upto_stage) or last.get("tag") != tag)
     if need:
         if not os.path.isdir(ENGINE_SRC):
-            raise FileNotFoundError(f"引擎源码不存在：{ENGINE_SRC}（请先下载 AnyFIM 到 engines/）")
+            raise FileNotFoundError(f"engine sources not found: {ENGINE_SRC} (clone AnyFIM into engines/ first)")
         _copy_sources()
         _patch_kernel(upto_stage)
         if dense:
-            # 稠密重映射已固化进引擎源码，无需补丁；校验存在性即可
+            # dense remapping is native in the engine sources; no patch needed, just verify presence
             src = open(os.path.join(SRC_DIR, KERNEL_REL), encoding="utf-8").read()
-            assert "void denseRemapItems()" in src, "引擎源码缺少原生 denseRemapItems"
+            assert "void denseRemapItems()" in src, "engine sources lack the native denseRemapItems"
         else:
-            _patch_disable_dense()  # 消融：禁用稠密重映射
+            _patch_disable_dense()  # ablation: disable dense remapping
         env = dict(os.environ, CudaToolkitDir=CUDA_DIR)
         cmd = [
             MSBUILD, os.path.join(SRC_DIR, "AnytimeMining.sln"),
@@ -125,10 +133,10 @@ def ensure_anyfim_built(dataset_path, upto_stage, rebuild=False, dense=True):
         if not os.path.exists(exe):
             print(r.stdout[-3000:])
             print(r.stderr[-2000:], file=sys.stderr)
-            raise RuntimeError("AnytimeMining 构建失败")
+            raise RuntimeError("AnytimeMining build failed")
         json.dump({"stage": int(upto_stage), "tag": tag},
                   open(marker_p, "w", encoding="utf-8"))
-    # 每次调用都刷新数据集文件（内容可能变化）
+    # refresh the dataset file on every call (its content may change)
     shutil.copyfile(dataset_path, os.path.join(TXN_DIR, "data.txt"))
     return exe
 

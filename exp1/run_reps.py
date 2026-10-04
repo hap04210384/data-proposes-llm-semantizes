@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
-"""实验 1 定稿编排：anytime 流 + 基线网格，N 次重复取中位数 + 同阈值集合验证。
+"""Experiment 1, final orchestration: anytime stream + baseline threshold grid,
+N repetitions with medians + same-threshold set verification.
 
-用法:
-    python exp1/run_reps.py <chess|retail> <轮数K> [重复次数N]
+Usage:
+    python exp1/run_reps.py <chess|retail> <stages K> [repetitions N]
 
-产出（results/exp1/）:
-    anyfim_<name>_K<K>_median<N>.csv     anytime 逐轮中位数
-    baseline_<name>_median<N>.csv        基线网格中位数
-    pairs_<name>_K<K>.csv                同阈值集合验证（单次）
-    各原始重复数据保留在同目录 *_rep<i>.csv
+Outputs (results/exp1/):
+    anyfim_<name>_K<K>_median<N>.csv     per-stage anytime medians
+    baseline_<name>_median<N>.csv        baseline grid medians
+    pairs_<name>_K<K>.csv                same-threshold set verification (single run)
+    raw per-repetition data kept alongside as *_rep<i>.csv
 """
 import csv
 import os
@@ -36,7 +37,7 @@ GRIDS = {
 
 
 def median_rows(list_of_rows):
-    """同 stage 多组 rows -> 按数值列取中位数的 rows。"""
+    """Multiple row groups for the same stage -> per-column medians."""
     by_stage = {}
     for rows in list_of_rows:
         for r in rows:
@@ -89,9 +90,9 @@ def main():
     K = int(sys.argv[2])
     N = int(sys.argv[3]) if len(sys.argv) > 3 else 5
     ds = os.path.abspath(os.path.join(RES, f"{name}.txt"))
-    assert os.path.exists(ds), f"数据集不在 {ds}"
+    assert os.path.exists(ds), f"dataset not found at {ds}"
 
-    # ---- 1. anytime N 次重复 ----
+    # ---- 1. anytime stream, N repetitions ----
     rep_rows = []
     for i in range(N):
         rows, _ = run_anyfim(ds, K, dense=True)
@@ -102,9 +103,9 @@ def main():
     for i, rows in enumerate(rep_rows):
         write_csv(os.path.join(RES, f"anyfim_{name}_K{K}_rep{i+1}.csv"), rows)
 
-    # ---- 2. 基线网格 N 次重复 ----
+    # ---- 2. baseline grid, N repetitions ----
     grid = GRIDS[name]
-    run_grid_once(ds, grid[0])  # 预热
+    run_grid_once(ds, grid[0])  # warmup
     grid_rep = []
     for i in range(N):
         recs = []
@@ -128,7 +129,7 @@ def main():
                       "n_mfi": grp[0]["n_mfi"], "grid_cum_wall_s": round(cum, 4)})
     write_csv(os.path.join(RES, f"baseline_{name}_median{N}.csv"), med_g)
 
-    # ---- 3. 同阈值集合验证（单次）----
+    # ---- 3. same-threshold set verification (single run) ----
     import glob as g
     any_res = sorted(g.glob(os.path.join(ROOT, "build", "anyfim", "src", "x64",
                                          "TransactionSets", "data.txt-*-stages=Results.txt")))[-1]
@@ -151,15 +152,15 @@ def main():
         pairs.append({"stage": k, "theta": round(th, 6), "n_anytime": len(a),
                       "n_baseline": len(b), "jaccard": round(jac, 4)})
     write_csv(os.path.join(RES, f"pairs_{name}_K{K}.csv"), pairs)
-    print(f"[verify] {K - n_bad}/{K} 轮 Jaccard=1.0（差异轮: {n_bad}）")
+    print(f"[verify] {K - n_bad}/{K} stages at Jaccard=1.0 (mismatched: {n_bad})")
 
-    # ---- 4. 汇总打印 ----
+    # ---- 4. summary ----
     any_cum = med[-1]["cum_engine_s"]
     grid_cum = med_g[-1]["grid_cum_wall_s"]
-    print(f"\n== {name} 定稿（各 {N} 次中位）==")
-    print(f"anytime 到第{K}轮: 引擎累计 {any_cum}s, n_mfi={med[-1]['n_mfi_cum']}")
-    print(f"基线网格 {len(grid)} 档累计墙钟: {grid_cum}s")
-    print(f"墙钟口径加速比: {grid_cum/any_cum:.1f}x")
+    print(f"\n== {name} final (medians of {N}) ==")
+    print(f"anytime up to stage {K}: cum engine {any_cum}s, n_mfi={med[-1]['n_mfi_cum']}")
+    print(f"baseline grid over {len(grid)} thresholds, cum wall: {grid_cum}s")
+    print(f"wall-clock speedup: {grid_cum/any_cum:.1f}x")
 
 
 if __name__ == "__main__":

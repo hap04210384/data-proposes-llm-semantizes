@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
-"""Exp6 下游消费实验：规则注入 LLM 的下一项推荐。
+"""Exp 6 downstream-consumption experiment: rule-injected next-item recommendation.
 
-任务：给定购物篮前缀 {A}，问 LLM 最可能的下一项（retail，项为数值 ID）。
-  A 组（基线）：不供规则，LLM 凭"常识"回答；
-  B 组（供给）：注入引擎 top-10 精确规则（含 support/confidence）后回答。
-ground truth：数据精确统计的 argmax_B conf(A->B)（可复算）。
-指标：hit@1（回答项 ID 与 ground truth 精确一致）、回答合法率（ID 存在于词表）。
-prompt/temperature/模型/时间戳由适配层自动落盘（results/exp6/raw/）。
+Task: given a basket prefix {A}, ask the LLM for the most likely next item
+(retail, items are numeric IDs).
+  Group A (baseline): no rules supplied, the LLM answers from "general knowledge";
+  Group B (supply): the engine's top-10 exact rules (with support/confidence) are
+     injected before answering.
+Ground truth: argmax_B conf(A->B) computed exactly from the data (recomputable).
+Metrics: hit@1 (answered item ID exactly equals ground truth), valid-answer rate
+(ID exists in the vocabulary).
+prompt/temperature/model/timestamps are persisted automatically by the adapter
+layer (results/exp6/raw/).
 """
 import json
 import os
@@ -49,20 +53,20 @@ def build_probes():
             for b in t:
                 if a != b:
                     pair[(a, b)] += 1
-    # 单次遍历 pair 表求每个 antecedent 的最优 consequent（O(|pair|)）
+    # one pass over the pair table for each antecedent's best consequent (O(|pairs|))
     best = {}
     for (a, b), c in pair.items():
         conf = c / ante[a]
         if a not in best or conf > best[a][1]:
             best[a] = (b, conf)
-    # 探针：antecedent 频次前 200 内，最优置信度 >=0.03 的取 50 个
+    # probes: antecedents in the top 200 by frequency whose best confidence >= 0.03; take 50
     probes = []
     for a, _ in f1.most_common(200):
         if a in best and best[a][1] >= 0.03:
             probes.append({"ante": a, "truth": best[a][0], "conf": round(best[a][1], 4)})
         if len(probes) >= N_PROBES:
             break
-    # 每个 antecedent 各自的 top-10 规则（按置信度），按探针注入
+    # inject the per-antecedent top-10 rules (by confidence) for each probe
     per_ante = {}
     for (a, b), c in pair.most_common():
         conf = c / ante[a]

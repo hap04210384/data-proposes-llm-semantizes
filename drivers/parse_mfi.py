@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
-"""统一解析两个引擎的 MFI 输出。
+"""Unified parser for both engines' MFI output.
 
-- TensorFIM / AnyFIM-GivenThreshold 格式:
+- TensorFIM / AnyFIM-GivenThreshold format:
     `N-th: <len> { i1 i2 ... }   support: <rel>  frequency: <abs>`
-- AnyFIM anytime 结果文件（-stages=Results.txt）:
-    头部有 runtimePerStage / supportThrePerStage 等汇总行；
-    之后每轮一个块 `====== Nth stage MFIs Number: K ======`，块内为累计 MFI 族
-    （第 k 轮块 = 前 k 轮的 MFI 族，与 anytime 语义一致）。
+- AnyFIM anytime result file (-stages=Results.txt):
+    the header carries summary lines such as runtimePerStage / supportThrePerStage;
+    each stage is then one block `====== Nth stage MFIs Number: K ======` containing the
+    cumulative MFI family (the k-th block = the MFI family of the first k stages,
+    consistent with anytime semantics).
 
-所有 support 为相对支持度，frequency 为绝对计数。
+All support values are relative support; frequency is the absolute count.
 """
 import re
 
@@ -18,7 +19,7 @@ STAGE_LIST = re.compile(r"^(\S*PerStage\S*):\s*(.*)$")
 
 
 def parse_mfi_lines(text):
-    """解析 `N-th: ...` 行序列 -> {frozenset(items): abs_freq}"""
+    """Parse a sequence of `N-th: ...` lines -> {frozenset(items): abs_freq}"""
     out = {}
     for ln in text.splitlines():
         m = LINE.match(ln.strip())
@@ -34,7 +35,7 @@ def parse_tensorfim_results(path):
 
 
 def parse_anyfim_anytime(path):
-    """返回 (header, stages)；header 为标量汇总 dict，stages 为 {k: {mfis, n}}。"""
+    """Return (header, stages); header is a dict of scalar summaries, stages is {k: {mfis, n}}."""
     text = open(path, encoding="utf-8", errors="replace").read()
     header, stages = {}, {}
     cur = None
