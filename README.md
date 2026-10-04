@@ -34,17 +34,21 @@ Clone the engines next to this repository as `../engines/AnyFIM` and
 
 ## Datasets
 
+All four datasets ship with this repository under `data/` (TCGA-BRCA is
+gzip-compressed because of GitHub's 100 MB file limit; decompress it before use):
+`data/chess.txt`, `data/retail.txt`, `data/kosarak.txt`,
+`data/TCGA_BRCA_stripped.txt.gz`.
+
 | Dataset | Shape | Source |
 |---|---|---|
-| chess | 3,196 tx × 75 items | FIMI repository / AnyFIM repo |
-| retail | 88,162 tx × 16,470 items | FIMI repository / AnyFIM repo |
+| chess | 3,196 tx × 75 items | FIMI repository |
+| retail | 88,162 tx × 16,470 items | FIMI repository |
 | kosarak | 990,002 tx × 41,270 items | FIMI repository |
-| TCGA-BRCA (stripped) | 1,226 tx × 31,683 items | `TCGA_BRCA_stripped.txt.gz` in the TensorFIM repo |
+| TCGA-BRCA (stripped) | 1,226 tx × 31,683 items | open TCGA cohort; 28,977 ubiquitous core genes stripped by `drivers/prep_dataset.py` |
 
-Datasets are **not committed** (see `.gitignore`); place them under `results/exp1/`
-and `results/exp2/` as referenced by the scripts, or adjust paths at the top of each
-experiment script. TCGA items are anonymous gene IDs; the 28,977 ubiquitous core
-genes were stripped by `drivers/prep_dataset.py`.
+Place the decompressed files under `results/exp1/` and `results/exp2/` as
+referenced by the scripts, or adjust paths at the top of each experiment script.
+TCGA items are anonymous gene IDs.
 
 ## Environment
 

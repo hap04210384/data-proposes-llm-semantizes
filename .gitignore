@@ -1,5 +1,4 @@
 # 数据与结果（大文件、可再生成，一律不入库）
-data/
 results/
 *.csv
 *.log
@@ -7,6 +6,11 @@ results/
 *.dat
 *.txt
 !requirements*.txt
+
+# 审稿人复现数据（data/ 下四个数据集放行，TCGA 因单文件限 100MB 以 .gz 分发）
+!data/
+!data/*.txt
+!data/*.gz
 
 # Python
 __pycache__/
