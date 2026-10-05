@@ -1,0 +1,1 @@
+{"model": "deepseek-flash", "content": "103", "prompt": "You are assisting a grocery retail analyst. Items are identified by numeric IDs.\nA customer has bought item 102. Which single item are they most likely to buy next?\nAnswer with one integer item ID only, no explanation.", "ts": "2026-10-04 10:50:16"}

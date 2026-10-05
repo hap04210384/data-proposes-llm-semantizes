@@ -1,0 +1,30 @@
+{
+ "full": {
+  "n_tx": 990002,
+  "n_items": 41270,
+  "bitmap_gb": 5.107,
+  "python_parse_s": 0.63,
+  "wall_total_s": 138.49
+ },
+ "quarter": {
+  "n_tx": 250000,
+  "n_items": 30561,
+  "bitmap_gb": 0.955,
+  "python_parse_s": 0.17,
+  "wall_total_s": 8.28
+ },
+ "tenth": {
+  "n_tx": 100000,
+  "n_items": 23496,
+  "bitmap_gb": 0.294,
+  "python_parse_s": 0.07,
+  "wall_total_s": 1.45
+ },
+ "vocab100k": {
+  "n_tx": 987510,
+  "n_items": 23496,
+  "bitmap_gb": 2.9,
+  "python_parse_s": 0.64,
+  "wall_total_s": 132.62
+ }
+}

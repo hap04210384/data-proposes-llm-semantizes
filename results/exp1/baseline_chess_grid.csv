@@ -1,0 +1,13 @@
+﻿dataset,threshold,wall_s,computation_s,n_mfi,ok
+chess.txt,0.99,0.1078,0.0001394,2,ok
+chess.txt,0.98,0.1079,0.0001358,3,ok
+chess.txt,0.97,0.1117,0.000123,4,ok
+chess.txt,0.96,0.1023,0.0001178,5,ok
+chess.txt,0.95,0.1035,0.0002808,11,ok
+chess.txt,0.94,0.098,0.0003639,18,ok
+chess.txt,0.93,0.1007,0.0004227,15,ok
+chess.txt,0.92,0.0997,0.0005523,26,ok
+chess.txt,0.91,0.0999,0.0007186,30,ok
+chess.txt,0.9,0.1012,0.0010338,34,ok
+chess.txt,0.85,0.1028,0.0037073,119,ok
+chess.txt,0.8,0.1136,0.0123086,226,ok

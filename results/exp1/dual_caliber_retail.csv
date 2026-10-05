@@ -1,0 +1,2 @@
+﻿dataset,K,reps,any_cum_engine_s,any_wall_s,grid_cum_engine_s,grid_cum_wall_s,speedup_engine,speedup_wall
+retail,50,5,0.022268,0.9277,0.011663,1.1069,0.52,1.19
