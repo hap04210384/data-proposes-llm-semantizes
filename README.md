@@ -8,7 +8,8 @@ tagging, and conflict resolution — never numeric content. The supplied rule ba
 **hallucination-free by construction**.
 
 This repository is the experiment and reproduction package for the paper
-*Zero-Threshold Rule Supply for Neuro-Symbolic Systems* (under review).
+*Threshold-Free Rule Supply for Neuro-Symbolic Systems: Data-Proposed,
+LLM-Semantized, and Hallucination-Free by Construction*.
 It implements the controlled studies behind the paper's claims:
 
 | Exp. | Question | Script |
@@ -17,9 +18,12 @@ It implements the controlled studies behind the paper's claims:
 | 2 | Where the preprocessing wall is (bitmap allocation vs. parsing) | `experiments/exp2_preprocess_diagnosis.py` |
 | 3 | Anytime supply curves | `exp1/` + `results` (Fig. 3) |
 | 4 | Rule quality at supply depth (lift, bootstrap stability) | `experiments/exp4_depth_curve.py`, `experiments/exp4_tcga_quality.py` |
-| 5 | Hallucination control: LLM-authored vs. engine-supplied rules | `experiments/exp5_hallucination.py` |
+| 5 | Hallucination control: LLM-authored vs. engine-supplied rules | `experiments/exp5_hallucination.py`, `experiments/exp5_data_conditioned_authoring.py` |
 | 6 | Downstream consumption: rule-injected next-item recommendation | `experiments/exp6_rule_injected_recommend.py` |
 | 7 | Determinism and dense-ID-remap ablation | `experiments/exp7_determinism.py` |
+| 8 | Scaled ranking study at 200 probes | `experiments/exp8_ranked_recommend.py` |
+| 9 | Holdout-split generalization | `experiments/exp9_holdout_downstream.py` |
+| 10 | External consistency vs. public miners (mlxtend fpmax / fpgrowth) | `experiments/exp10_external_consistency.py` |
 
 ## Engines (not vendored here)
 
@@ -57,6 +61,8 @@ TCGA items are anonymous gene IDs.
 - DeepSeek API key via the environment variable `DEEPSEEK_API_KEY`
   (only Exp. 5 and Exp. 6 call an LLM; temperature is fixed to 0 and every prompt,
   resolved model version, and timestamp is written to `results/exp5/` / `results/exp6/`)
+- Exp. 10 additionally requires `pip install mlxtend pandas scipy` (reviewer-side
+  pure-Python reference implementations; the engines themselves do not depend on them)
 
 ## Reproducing
 
@@ -66,10 +72,15 @@ Each experiment script is standalone and writes its raw evidence under `results/
 ```bash
 python experiments/exp7_determinism.py            # determinism + dense-remap ablation
 python experiments/exp5_hallucination.py          # Exp. 5 (needs DEEPSEEK_API_KEY)
+python experiments/exp5_data_conditioned_authoring.py  # Exp. 5, Group A2 (needs DEEPSEEK_API_KEY)
 python experiments/exp6_rule_injected_recommend.py# Exp. 6 (needs DEEPSEEK_API_KEY)
 python experiments/exp2_preprocess_diagnosis.py   # Exp. 2 (kosarak, ~4 min)
 python experiments/exp4_depth_curve.py            # Exp. 4 lift-vs-depth curves
 python experiments/exp4_tcga_quality.py           # Exp. 4 TCGA bootstrap stability
+python experiments/exp8_ranked_recommend.py       # Exp. 8 (needs DEEPSEEK_API_KEY)
+python experiments/exp9_holdout_downstream.py     # Exp. 9 (needs DEEPSEEK_API_KEY)
+python experiments/exp10_external_consistency.py chess   # Exp. 10 (needs mlxtend)
+python experiments/exp10_external_consistency.py retail  # Exp. 10 (needs mlxtend, ~1-2 h)
 ```
 
 The first AnyFIM run on a new dataset performs a one-time GPU calibration (~148 s);
@@ -77,8 +88,14 @@ the calibration constant is cached in `results/gpu_pct_cache.json`.
 
 ## Paper references
 
+Both engines are not yet published as papers; they are sketched in the paper
+(Algorithms 1 and 2), and all of their implementation details are contained in
+the two public repositories below. The present paper contributes the supply
+architecture, the numeric firewall, the evaluation methodology, and the
+end-to-end evidence; the engines are its foundation, not its claim.
+
 [1] Y. Zhang, J. Yang, X. Zhang, W. Yu, M. Huang, "Anytime frequent itemset mining:
 A threshold-free progressive item-activation framework with CPU–GPU heterogeneous
-collaboration," under review, 2026.
+collaboration," not yet published; full implementation: https://github.com/hap04210384/Anytime-Frequent-Itemset-Mining
 [2] Y. Zhang, T. Chen, J. Yang, X. Zhang, M. Huang, "TensorFIM: Exact maximal frequent
-itemset mining on tensor cores," under review, 2026.
+itemset mining on tensor cores," not yet published; full implementation: https://github.com/hap04210384/TensorFIM
