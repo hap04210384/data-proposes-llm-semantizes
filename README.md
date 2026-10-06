@@ -38,21 +38,28 @@ Clone the engines next to this repository as `../engines/AnyFIM` and
 
 ## Datasets
 
-All four datasets ship with this repository under `data/` (TCGA-BRCA is
-gzip-compressed because of GitHub's 100 MB file limit; decompress it before use):
-`data/chess.txt`, `data/retail.txt`, `data/kosarak.txt`,
-`data/TCGA_BRCA_stripped.txt.gz`.
+This repository does not redistribute dataset files; all four datasets are
+publicly available from their sources below. Place each file under the path
+referenced by the experiment scripts (mostly `results/exp1/` and
+`results/exp2/`), or adjust paths at the top of each script.
 
-| Dataset | Shape | Source |
+| Dataset | Shape | Obtain from |
 |---|---|---|
-| chess | 3,196 tx × 75 items | FIMI repository |
-| retail | 88,162 tx × 16,470 items | FIMI repository |
-| kosarak | 990,002 tx × 41,270 items | FIMI repository |
-| TCGA-BRCA (stripped) | 1,226 tx × 31,683 items | open TCGA cohort; 28,977 ubiquitous core genes stripped by `drivers/prep_dataset.py` |
+| chess | 3,196 tx × 75 items | FIMI repository, http://fimi.uantwerpen.be/data/chess.dat |
+| retail | 88,162 tx × 16,470 items | FIMI repository, http://fimi.uantwerpen.be/data/retail.dat |
+| kosarak | 990,002 tx × 41,270 items | FIMI repository, http://fimi.uantwerpen.be/data/kosarak.dat |
+| TCGA-BRCA (stripped) | 1,226 tx × 31,683 items | distributed (gzip) with the TensorFIM repository, https://github.com/hap04210384/TensorFIM — derived from the open TCGA cohort, with 28,977 ubiquitous core genes stripped by `drivers/prep_dataset.py` |
 
-Place the decompressed files under `results/exp1/` and `results/exp2/` as
-referenced by the scripts, or adjust paths at the top of each experiment script.
-TCGA items are anonymous gene IDs.
+Rename the FIMI `.dat` files to `.txt` where a script expects `.txt`. TCGA
+items are anonymous gene IDs and carry no clinical or personal information.
+
+## Results
+
+`results/` contains the summarized measurements behind every table and figure
+in the paper (timing medians, per-stage agreement, evaluation metrics). Raw LLM
+call logs (every prompt, server-resolved model version, and timestamp of the
+roughly 1,350 API calls) are retained by the authors and are available on
+request.
 
 ## Environment
 
