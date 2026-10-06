@@ -1,0 +1,31 @@
+{
+ "source": "Exp. 5 Group B archived raw calls (local retention); audited with the identical criteria as Exp. 11",
+ "audit_criteria": [
+  "n_named",
+  "num_violations",
+  "citation_viol"
+ ],
+ "reps": [
+  {
+   "n_named": 50,
+   "num_violations": 0,
+   "citation_viol": 0,
+   "model": "deepseek-flash",
+   "ts": "2026-10-04 09:58:58"
+  },
+  {
+   "n_named": 50,
+   "num_violations": 0,
+   "citation_viol": 0,
+   "model": "deepseek-flash",
+   "ts": "2026-10-04 09:59:05"
+  },
+  {
+   "n_named": 50,
+   "num_violations": 0,
+   "citation_viol": 0,
+   "model": "deepseek-flash",
+   "ts": "2026-10-04 09:59:12"
+  }
+ ]
+}

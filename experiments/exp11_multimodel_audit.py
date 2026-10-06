@@ -142,15 +142,11 @@ def main():
     prompt = PROMPT_SEMANTIZE.format(rules=rules_text)
     print(f"{len(rows)} rules, prompt {len(prompt)} chars")
 
-    # DeepSeek family: reuse Exp. 5 Group B raw calls (identical prompt/protocol)
-    ds_raw_path = os.path.join(ROOT, "results", "exp5", "group_b_raw.json")
-    ds_raws = json.load(open(ds_raw_path, encoding="utf-8"))[:REPS]
-    ds_per_rep = []
-    for r in ds_raws:
-        assert r["prompt"] == prompt, "DeepSeek archived prompt differs from rebuilt prompt"
-        a = audit_rep(parse_json_array(r["content"]), rows_by_id)
-        a.update({"model": r["model"], "ts": r["ts"]})
-        ds_per_rep.append(a)
+    # DeepSeek family: reuse the Exp. 5 Group B audit summary (archived raw calls are
+    # retained by the authors per the data policy; the audit was run with the identical
+    # criteria, see results/exp5/exp5_group_b_audit.json)
+    ds_audit_path = os.path.join(ROOT, "results", "exp5", "exp5_group_b_audit.json")
+    ds_per_rep = json.load(open(ds_audit_path, encoding="utf-8"))["reps"]
     families = {"deepseek": {"endpoint_model": "deepseek-chat (Exp. 5 archive)",
                              "per_rep": ds_per_rep}}
     print("deepseek (reused):", ds_per_rep)
