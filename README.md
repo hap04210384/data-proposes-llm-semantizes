@@ -1,6 +1,6 @@
 # data-proposes-llm-semantizes
 
-**Data proposes, LLM semantizes.** Zero-threshold, anytime rule supply for
+**Data proposes, LLM semantizes.** Threshold-free, anytime rule supply for
 neuro-symbolic systems: an anytime, threshold-free mining engine streams maximal
 co-occurrence patterns with exact support; a rule-assembly layer derives implication
 rules with bit-exact confidence on GPU tensor cores; an LLM is restricted to naming,
@@ -8,8 +8,8 @@ tagging, and conflict resolution — never numeric content. The supplied rule ba
 **hallucination-free by construction**.
 
 This repository is the experiment and reproduction package for the paper
-*Threshold-Free Rule Supply for Neuro-Symbolic Systems: Data-Proposed,
-LLM-Semantized, and Hallucination-Free by Construction*.
+*Data Proposes, LLM Semantizes: Hallucination-Free Rule Supply for Neuro-Symbolic
+Systems*.
 It implements the controlled studies behind the paper's claims:
 
 | Exp. | Question | Script |
@@ -24,6 +24,7 @@ It implements the controlled studies behind the paper's claims:
 | 8 | Scaled ranking study at 200 probes | `experiments/exp8_ranked_recommend.py` |
 | 9 | Holdout-split generalization | `experiments/exp9_holdout_downstream.py` |
 | 10 | External consistency vs. public miners (mlxtend fpmax / fpgrowth) | `experiments/exp10_external_consistency.py` |
+| 11 | Cross-family audit of semantic outputs (DeepSeek / Qwen / GLM); rule-competition link detection | `experiments/exp11_multimodel_audit.py` |
 
 ## Engines (not vendored here)
 
@@ -88,6 +89,7 @@ python experiments/exp8_ranked_recommend.py       # Exp. 8 (needs DEEPSEEK_API_K
 python experiments/exp9_holdout_downstream.py     # Exp. 9 (needs DEEPSEEK_API_KEY)
 python experiments/exp10_external_consistency.py chess   # Exp. 10 (needs mlxtend)
 python experiments/exp10_external_consistency.py retail  # Exp. 10 (needs mlxtend, ~1-2 h)
+python experiments/exp11_multimodel_audit.py             # Exp. 11 (needs DEEPSEEK_API_KEY, Qwen and GLM keys)
 ```
 
 The first AnyFIM run on a new dataset performs a one-time GPU calibration (~148 s);
