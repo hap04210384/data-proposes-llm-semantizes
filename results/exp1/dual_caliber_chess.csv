@@ -1,2 +1,2 @@
 ﻿dataset,K,reps,any_cum_engine_s,any_wall_s,grid_cum_engine_s,grid_cum_wall_s,speedup_engine,speedup_wall
-chess,20,5,0.03558,0.186,0.018533,1.2073,0.52,6.49
+chess,20,5,0.03558,0.186,0.03606,2.1399,1.013,11.50

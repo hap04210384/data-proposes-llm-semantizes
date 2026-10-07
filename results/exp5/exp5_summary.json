@@ -29,6 +29,25 @@
    "num_violations_total": 0,
    "support_parity_max_abs_diff": 4.659150200717055e-08,
    "support_parity_median_abs_diff": 3.711916698491413e-09
+  },
+  "group_a2": {
+   "model": [
+    "deepseek-flash",
+    "deepseek-flash",
+    "deepseek-flash"
+   ],
+   "n_returned": [
+    51,
+    50,
+    50
+   ],
+   "n_rules_total": 151,
+   "item_exist_rate_median": 1.0,
+   "support_abs_err_median": 0.0323,
+   "support_abs_err_max": 0.2986,
+   "conf_abs_err_median": 0.0935,
+   "conf_abs_err_max": 0.5962,
+   "note": "Group A2 follow-up: same protocol as Group A but the prompt exposes the real 1-based dense item IDs of results/exp1/retail.txt; antecedent = sorted all-but-last item, consequent = last item (exact_stats caliber); aggregation = median of per-rep means (median) and median of per-rep maxima (max)."
   }
  },
  "group_a_detail": [
